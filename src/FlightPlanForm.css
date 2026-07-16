@@ -1,0 +1,298 @@
+/* =============================================
+   FLIGHT PLAN FORM
+   ============================================= */
+
+/* ── Toolbar ── */
+.fp-toolbar { padding: 12px 16px; background: #f0f2f5; border-bottom: 1px solid #ddd; }
+.fp-toolbar h1 { margin: 0 0 8px; font-size: 18px; font-weight: 600; }
+.fp-toolbar-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.fp-toolbar-btns button {
+  padding: 6px 14px; border: 1px solid #999; border-radius: 4px;
+  background: #fff; cursor: pointer; font-size: 13px;
+}
+.fp-toolbar-btns button:hover:not(:disabled) { background: #e8e8e8; }
+.fp-toolbar-btns button:disabled { opacity: 0.4; cursor: default; }
+.fp-zoom-controls {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;
+  border-left: 1px solid #ccc; padding-left: 8px;
+}
+.fp-zoom-controls span { min-width: 40px; text-align: center; font-size: 13px; }
+.fp-del { color: #c00 !important; }
+.fp-template-btns {
+  display: inline-flex; gap: 4px; margin-left: 8px;
+  border-left: 1px solid #ccc; padding-left: 8px;
+}
+.fp-template-btns button {
+  background: #e8f0fe; border-color: #93b8ea; color: #1a56c4;
+}
+.fp-template-btns button:hover { background: #d0e2fc; }
+.fp-dirty { color: #c00; font-size: 12px; font-weight: 600; }
+.fp-saved-list { margin-top: 10px; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 12px; }
+.fp-saved-list h3 { margin: 0 0 8px; font-size: 15px; }
+.fp-saved-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px; gap: 8px; flex-wrap: wrap;
+}
+.fp-saved-item span:last-child { display: flex; gap: 4px; }
+.fp-saved-item button { padding: 3px 10px; border: 1px solid #aaa; border-radius: 3px; background: #fff; cursor: pointer; font-size: 12px; }
+
+/* ── Form container ── */
+.fp-page { display: flex; justify-content: center; padding: 16px; background: #e0e0e0; }
+.fp-form-wrapper { display: flex; justify-content: center; }
+.fp-form { position: relative; width: 612px; height: 792px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); flex-shrink: 0; }
+.fp-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; user-select: none; display: block; }
+
+/* ── Editable inputs (screen only) ── */
+.fp-overlay-input {
+  position: absolute; border: none; background: transparent;
+  font-family: Arial, sans-serif; font-size: 8pt; color: #000;
+  padding: 0 1px; margin: 0; outline: none; z-index: 2;
+  text-transform: uppercase; box-sizing: border-box;
+}
+.fp-overlay-input[type='date'] {
+  color: #000; cursor: pointer;
+}
+.fp-overlay-input[type='date']::-webkit-calendar-picker-indicator {
+  opacity: 0; position: absolute; right: 0; top: 0; width: 100%; height: 100%; cursor: pointer;
+}
+.fp-input-sm { font-size: 7pt !important; }
+
+/* ── Overlay Select ── */
+.fp-select-wrap {
+  position: absolute; z-index: 2;
+}
+.fp-overlay-select {
+  display: block; border: none; background: transparent;
+  font-family: Arial, sans-serif; font-size: 8pt; color: #000;
+  padding: 0; margin: 0; outline: none;
+  text-transform: uppercase; cursor: pointer;
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  width: 100%; height: 100%; line-height: 15px;
+}
+.fp-select-wrap::after {
+  content: ''; position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
+  width: 0; height: 0;
+  border-left: 3px solid transparent; border-right: 3px solid transparent;
+  border-top: 4px solid #000; pointer-events: none;
+}
+
+/* ── Equipment Select ── */
+.fp-equip-wrap {
+  position: absolute; z-index: 2; display: flex; align-items: center;
+  justify-content: flex-end; column-gap: 2px;
+}
+.fp-equip-comm {
+  width: 3ch; text-align: right; height: 13px; line-height: 13px;
+}
+.fp-equip-surv {
+  width: 2ch; height: 13px; line-height: 13px;
+}
+
+/* ── Char Grid Input ── */
+.fp-char-grid {
+  position: absolute; z-index: 2; display: flex; align-items: stretch;
+}
+.fp-char-grid-cell {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
+}
+.fp-char-grid-cell:last-child {
+  border-right: none;
+}
+.fp-char-grid-cell input {
+  width: 100%; height: 100%; border: none; background: transparent;
+  font-family: Arial, sans-serif; font-size: 8pt;
+  text-align: center; text-transform: uppercase; outline: none; padding: 0; margin: 0;
+}
+
+/* ── Checkboxes ── */
+.fp-overlay-check {
+  position: absolute; z-index: 3; display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.fp-overlay-check input[type='checkbox'] { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; padding: 0; }
+.fp-check-x {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: Arial, sans-serif; font-weight: 900;
+  font-size: 13pt; color: #000; line-height: 1; pointer-events: none;
+  opacity: 0;
+}
+.fp-overlay-check input[type='checkbox']:checked ~ .fp-check-x { opacity: 1; }
+
+/* ── Print-only value layer ── */
+.fp-print-value {
+  position: absolute;
+  font-family: Arial, sans-serif;
+  font-size: 8pt;
+  color: #000;
+  line-height: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-transform: uppercase;
+  pointer-events: none;
+  display: none;
+  box-sizing: border-box;
+  padding: 0 1px;
+}
+
+/* =============================================
+   SCREEN STYLES
+   ============================================= */
+@media screen {
+  .fp-overlay-input {
+    border: 1px solid rgba(0, 100, 255, 0.08);
+    background: rgba(255, 255, 255, 0.6);
+  }
+  .fp-overlay-input:focus {
+    border: 1.5px solid rgba(0, 100, 255, 0.4);
+    background: rgba(255, 255, 255, 0.92);
+    z-index: 10;
+  }
+
+  .fp-overlay-select {
+    border: 1px solid rgba(0, 100, 255, 0.08);
+    background: rgba(255, 255, 255, 0.6);
+  }
+  .fp-overlay-select:focus {
+    border: 1.5px solid rgba(0, 100, 255, 0.4);
+    background: rgba(255, 255, 255, 0.92);
+    z-index: 10;
+  }
+
+  .fp-select-wrap {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 100, 255, 0.08);
+    padding-left: 2px;
+  }
+  .fp-select-wrap:focus-within {
+    border: 1.5px solid rgba(0, 100, 255, 0.4);
+    background: rgba(255, 255, 255, 0.92);
+    z-index: 10;
+  }
+
+  .fp-equip-wrap {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 100, 255, 0.08);
+  }
+  .fp-equip-wrap:focus-within {
+    border: 1.5px solid rgba(0, 100, 255, 0.4);
+    background: rgba(255, 255, 255, 0.92);
+    z-index: 10;
+  }
+
+  .fp-char-grid {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 100, 255, 0.08);
+  }
+  .fp-char-grid:focus-within {
+    border: 1.5px solid rgba(0, 100, 255, 0.4);
+    background: rgba(255, 255, 255, 0.92);
+    z-index: 10;
+  }
+
+  .fp-overlay-check {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 100, 255, 0.12);
+  }
+  .fp-overlay-check:hover {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 100, 255, 0.3);
+  }
+  .fp-overlay-check input[type='checkbox']:checked ~ .fp-check-x {
+    background: rgba(255, 255, 255, 0.85);
+  }
+}
+
+/* =============================================
+   PRINT STYLES
+   ============================================= */
+@media print {
+  .screen-only { display: none !important; }
+
+  @page { size: letter portrait; margin: 0; }
+  html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+
+  .fp-page {
+    padding: 0 !important; background: #fff !important;
+    display: block !important; overflow: visible !important;
+  }
+  .fp-form-wrapper {
+    transform: scale(1.25) !important;
+  }
+  .fp-form {
+    width: 612px !important; height: 792px !important;
+    box-shadow: none !important; border: none !important;
+    background: #fff !important;
+  }
+
+  .fp-bg {
+    position: absolute !important; top: 0 !important; left: 0 !important;
+    width: 100% !important; height: 100% !important;
+    -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+  }
+
+  /* Hide inputs — the mirrored div layer takes over */
+  .fp-overlay-input { display: none !important; }
+  .fp-overlay-select { display: none !important; }
+  .fp-select-wrap { display: none !important; }
+  .fp-equip-wrap { display: none !important; }
+  .fp-char-grid { display: none !important; }
+
+  /* Show the print-value divs */
+  .fp-print-value {
+    display: flex !important;
+    align-items: center;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Print grid cells for char grid fields */
+  .fp-print-grid {
+    display: flex;
+    width: 100%;
+  }
+  .fp-print-grid-cell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid transparent;
+  }
+  .fp-print-grid-cell:last-child {
+    border-right: none;
+  }
+
+  /* Checkboxes: hide native, show X */
+  .fp-overlay-check input[type='checkbox'] { display: none !important; }
+  .fp-check-x { opacity: 0 !important; }
+  .fp-overlay-check input[type='checkbox']:checked ~ .fp-check-x {
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* ── Responsive ── */
+@media screen and (max-width: 700px) {
+  .fp-page { padding: 8px; overflow-x: auto; justify-content: flex-start; }
+  .fp-form-wrapper { justify-content: flex-start; }
+  .fp-form { min-width: 612px; flex-shrink: 0; }
+  .fp-toolbar { padding: 10px 12px; }
+  .fp-toolbar h1 { font-size: 14px; margin-bottom: 8px; }
+  .fp-toolbar-btns { flex-direction: column; gap: 8px; }
+  .fp-toolbar-btns button { padding: 10px 16px; font-size: 14px; width: 100%; }
+  .fp-template-btns {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    border-left: none; padding-left: 0; margin-left: 0;
+    border-top: 1px solid #ccc; padding-top: 8px; margin-top: 4px;
+  }
+  .fp-template-btns button { flex: 1; min-width: 80px; }
+  .fp-zoom-controls {
+    border-left: none; padding-left: 0; margin-left: 0;
+    border-top: 1px solid #ccc; padding-top: 8px; margin-top: 4px;
+    justify-content: center;
+  }
+  .fp-zoom-controls span { min-width: 50px; }
+  .fp-saved-list { font-size: 12px; }
+  .fp-saved-item { flex-direction: column; align-items: flex-start; }
+}
