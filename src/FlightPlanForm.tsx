@@ -5,6 +5,7 @@ import { savePlan, loadAllPlans, deletePlan, loadPlan, exportAllData, importAllD
 import type { TemplateSection } from './templateTypes';
 import TemplateModal from './TemplateModal';
 import { useTheme } from './ThemeContext';
+import jsPDF from 'jspdf';
 import './FlightPlanForm.css';
 
 type F = keyof FlightPlan;
@@ -255,6 +256,57 @@ export default function FlightPlanForm() {
 
   const handlePrint = useCallback(() => { window.print(); }, []);
 
+  const handleSavePdf = useCallback(async () => {
+    const bgImg = document.querySelector<HTMLImageElement>('.fp-bg');
+    if (!bgImg) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = bgImg.src;
+    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+    pdf.addImage(img, 'PNG', 0, 0, 612, 792);
+    pdf.setFontSize(11);
+    FIELDS.forEach(([key, x, y, w, h]) => {
+      let val = String(plan[key] ?? '');
+      if (!val) return;
+      if (key === 'date' && val.match(/^\d{4}-\d{2}-\d{2}$/)) val = formatDateForPrint(val);
+      const gLen = GRID_FIELDS[key as F] ?? 0;
+      const adjY = y - 2;
+      if (gLen) {
+        const padded = val.padEnd(gLen);
+        const cw = w / gLen;
+        padded.split('').forEach((ch, i) => {
+          pdf.text(ch, x + cw * i + cw / 2, adjY + h / 2 + 1, { align: 'center', baseline: 'middle' });
+        });
+      } else if (key === 'equipment') {
+        const [comm = '', surv = ''] = val.split('/');
+        const slashX = x + 62;
+        if (comm) pdf.text(comm, slashX - 3, adjY + h / 2 + 1, { align: 'right', baseline: 'middle' });
+        if (surv) pdf.text(surv, slashX + 4, adjY + h / 2 + 1, { align: 'left', baseline: 'middle' });
+      } else {
+        pdf.text(val, x + 1, adjY + h / 2 + 1, { align: 'left', baseline: 'middle' });
+      }
+    });
+    CHECKBOXES.filter(([k]) => plan[k]).forEach(([, x, y, cw, ch]) => {
+      pdf.setFontSize(13);
+      pdf.setFont('Helvetica', 'bold');
+      pdf.text('X', x + cw / 2, y + ch / 2 + 1, { align: 'center', baseline: 'middle' });
+      pdf.setFontSize(8);
+      pdf.setFont('Helvetica', 'normal');
+    });
+    const c = document.getElementById('fp-form');
+    c?.querySelectorAll('.fp-overlay-input, .fp-overlay-select, .fp-select-wrap, .fp-equip-wrap, .fp-char-grid').forEach(e => (e as HTMLElement).style.setProperty('display', 'none', 'important'));
+    c?.querySelectorAll('.fp-print-value').forEach(e => { const ev = e as HTMLElement; ev.style.setProperty('display', 'flex', 'important'); ev.style.setProperty('align-items', 'center', 'important'); });
+    c?.querySelectorAll('.fp-print-grid').forEach(e => (e as HTMLElement).style.setProperty('display', 'flex', 'important'));
+    c?.querySelectorAll('.fp-check-x').forEach(e => (e as HTMLElement).style.setProperty('opacity', '0', 'important'));
+    const name = (plan.aircraftIdentification || 'flight-plan').replace(/\s+/g, '_');
+    pdf.save(`${name}.pdf`);
+    c?.querySelectorAll('.fp-overlay-input, .fp-overlay-select, .fp-select-wrap, .fp-equip-wrap, .fp-char-grid').forEach(e => (e as HTMLElement).style.removeProperty('display'));
+    c?.querySelectorAll('.fp-print-value').forEach(e => { const ev = e as HTMLElement; ev.style.removeProperty('display'); ev.style.removeProperty('align-items'); });
+    c?.querySelectorAll('.fp-print-grid').forEach(e => (e as HTMLElement).style.removeProperty('display'));
+    c?.querySelectorAll('.fp-check-x').forEach(e => (e as HTMLElement).style.removeProperty('opacity'));
+  }, [plan]);
+
   const handleExport = useCallback(() => {
     const json = exportAllData();
     const blob = new Blob([json], { type: 'application/json' });
@@ -315,6 +367,7 @@ export default function FlightPlanForm() {
           <button onClick={handleSave} disabled={!dirty}>Save</button>
           <button onClick={handleDuplicate}>Duplicate</button>
           <button onClick={handlePrint}>Print</button>
+          <button onClick={handleSavePdf}>Save PDF</button>
           <button onClick={handleExport}>Export</button>
           <button onClick={handleImport}>Import</button>
           <button onClick={() => setShowSavedList(!showSavedList)}>Saved ({saved.length})</button>
@@ -527,10 +580,18 @@ export default function FlightPlanForm() {
                 <div
                   key={`print-${field}`}
                   className="fp-print-value"
-                  style={{ left: x, top: y, width: w, height: h, ...(field === 'equipment' ? { justifyContent: 'flex-end', wordSpacing: '1ch' } : {}) }}
+                  style={{ left: x, top: y, width: w, height: h }}
                 >
                   {field === 'equipment'
-                    ? raw.replace('/', ' ')
+                    ? (() => {
+                        const [a, b] = raw.split('/');
+                        return (
+                          <span style={{ position: 'relative', width: '100%', height: '100%' }}>
+                            {a && <span style={{ position: 'absolute', right: w - 59, top: 0, bottom: 0, display: 'flex', alignItems: 'center' }}>{a}</span>}
+                            {b && <span style={{ position: 'absolute', left: 66, top: 0, bottom: 0, display: 'flex', alignItems: 'center' }}>{b}</span>}
+                          </span>
+                        );
+                      })()
                     : content}
                 </div>
               );
