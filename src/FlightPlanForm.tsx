@@ -218,19 +218,6 @@ export default function FlightPlanForm() {
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  useEffect(() => {
-    const wrapper = document.querySelector('.fp-form-wrapper') as HTMLElement | null;
-    if (!wrapper) return;
-    const onBeforePrint = () => { wrapper.style.transform = 'scale(1.2)'; };
-    const onAfterPrint = () => { wrapper.style.transform = ''; };
-    window.addEventListener('beforeprint', onBeforePrint);
-    window.addEventListener('afterprint', onAfterPrint);
-    return () => {
-      window.removeEventListener('beforeprint', onBeforePrint);
-      window.removeEventListener('afterprint', onAfterPrint);
-    };
-  }, []);
-
   const handleChange = useCallback((field: F, value: string | boolean) => {
     setPlan(prev => ({ ...prev, [field]: value }));
     setDirty(true);
@@ -333,7 +320,7 @@ export default function FlightPlanForm() {
       </div>
 
       <div className="fp-page">
-        <div className="fp-form-wrapper" style={{ transform: `scale(${zoom})` }}>
+        <div className="fp-form-wrapper" style={{ zoom: zoom }}>
           <div className="fp-form" id="fp-form">
             <img src={`${import.meta.env.BASE_URL}flight-plan-bg.png`} alt="" className="fp-bg" draggable={false} />
 
