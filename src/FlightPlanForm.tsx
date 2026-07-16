@@ -218,6 +218,19 @@ export default function FlightPlanForm() {
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
+  useEffect(() => {
+    const wrapper = document.querySelector('.fp-form-wrapper') as HTMLElement | null;
+    if (!wrapper) return;
+    const onBeforePrint = () => { wrapper.style.transform = 'scale(1.2)'; };
+    const onAfterPrint = () => { wrapper.style.transform = ''; };
+    window.addEventListener('beforeprint', onBeforePrint);
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', onBeforePrint);
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+  }, []);
+
   const handleChange = useCallback((field: F, value: string | boolean) => {
     setPlan(prev => ({ ...prev, [field]: value }));
     setDirty(true);
