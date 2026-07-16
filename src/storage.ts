@@ -38,7 +38,12 @@ export function exportAllData(): string {
   const data: Record<string, unknown> = {};
   for (const key of ALL_KEYS) {
     const val = localStorage.getItem(key);
-    if (val !== null) data[key] = JSON.parse(val);
+    if (val === null) continue;
+    if (key === 'flight-plan-theme') {
+      data[key] = val;
+    } else {
+      data[key] = JSON.parse(val);
+    }
   }
   return JSON.stringify(data, null, 2);
 }
@@ -56,8 +61,8 @@ export function importAllData(json: string): { plans: number; templates: boolean
     templates = true;
     localStorage.setItem('flight-plan-templates', JSON.stringify(data['flight-plan-templates']));
   }
-  if (data['flight-plan-theme']) {
-    localStorage.setItem('flight-plan-theme', JSON.stringify(data['flight-plan-theme']));
+  if (typeof data['flight-plan-theme'] === 'string') {
+    localStorage.setItem('flight-plan-theme', data['flight-plan-theme']);
   }
   return { plans, templates };
 }
