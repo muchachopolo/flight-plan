@@ -192,8 +192,16 @@ export default function FlightPlanForm() {
   const [dirty, setDirty] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [activeModal, setActiveModal] = useState<TemplateSection | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => { setSaved(loadAllPlans()); }, []);
+
+  useEffect(() => {
+    const el = document.querySelector('.fp-page');
+    if (el) {
+      (el as HTMLElement).style.setProperty('--zoom', String(zoom));
+    }
+  }, [zoom]);
 
   useEffect(() => {
     const el = document.querySelector('.fp-page');
@@ -253,8 +261,11 @@ export default function FlightPlanForm() {
 
   return (
     <>
-      <div className="fp-toolbar screen-only">
-        <h1>Flight Plan - Bolivia</h1>
+      <div className={`fp-toolbar screen-only${menuOpen ? ' fp-toolbar--open' : ''}`}>
+        <div className="fp-toolbar-header">
+          <h1>Flight Plan - Bolivia</h1>
+          <button className="fp-menu-toggle" onClick={() => setMenuOpen(o => !o)}>{menuOpen ? '✕' : '☰'}</button>
+        </div>
         <div className="fp-toolbar-btns">
           <button onClick={handleNew}>+ New</button>
           <button onClick={handleSave} disabled={!dirty}>Save</button>
@@ -298,7 +309,7 @@ export default function FlightPlanForm() {
       </div>
 
       <div className="fp-page">
-        <div className="fp-form-wrapper" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+        <div className="fp-form-wrapper" style={{ transform: `scale(${zoom})` }}>
           <div className="fp-form" id="fp-form">
             <img src="/flight-plan-bg.png" alt="" className="fp-bg" draggable={false} />
 

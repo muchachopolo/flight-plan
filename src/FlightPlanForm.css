@@ -4,7 +4,9 @@
 
 /* ── Toolbar ── */
 .fp-toolbar { padding: 12px 16px; background: #f0f2f5; border-bottom: 1px solid #ddd; }
-.fp-toolbar h1 { margin: 0 0 8px; font-size: 18px; font-weight: 600; }
+.fp-toolbar h1 { margin: 0; font-size: 18px; font-weight: 600; }
+.fp-toolbar-header { display: flex; align-items: center; justify-content: space-between; }
+.fp-menu-toggle { display: none; background: none; border: 1px solid #999; border-radius: 4px; padding: 4px 8px; font-size: 18px; cursor: pointer; }
 .fp-toolbar-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
 .fp-toolbar-btns button {
   padding: 6px 14px; border: 1px solid #999; border-radius: 4px;
@@ -38,7 +40,7 @@
 
 /* ── Form container ── */
 .fp-page { display: flex; justify-content: center; padding: 16px; background: #e0e0e0; }
-.fp-form-wrapper { display: flex; justify-content: center; }
+.fp-form-wrapper { display: flex; justify-content: center; transform-origin: top center; }
 .fp-form { position: relative; width: 612px; height: 792px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); flex-shrink: 0; }
 .fp-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; user-select: none; display: block; }
 
@@ -218,6 +220,9 @@
   }
   .fp-form-wrapper {
     transform: scale(1.25) !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: auto !important;
   }
   .fp-form {
     width: 612px !important; height: 792px !important;
@@ -275,11 +280,21 @@
 /* ── Responsive ── */
 @media screen and (max-width: 700px) {
   .fp-page { padding: 8px; overflow-x: auto; justify-content: flex-start; }
-  .fp-form-wrapper { justify-content: flex-start; }
+  .fp-form-wrapper {
+    justify-content: flex-start;
+    transform-origin: top left;
+    width: calc(612px * var(--zoom, 1));
+    height: calc(792px * var(--zoom, 1));
+  }
   .fp-form { min-width: 612px; flex-shrink: 0; }
   .fp-toolbar { padding: 10px 12px; }
-  .fp-toolbar h1 { font-size: 14px; margin-bottom: 8px; }
-  .fp-toolbar-btns { flex-direction: column; gap: 8px; }
+  .fp-toolbar h1 { font-size: 14px; }
+  .fp-menu-toggle { display: block; }
+  .fp-toolbar-btns { display: none; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .fp-dirty, .fp-saved-list { display: none; }
+  .fp-toolbar--open .fp-toolbar-btns { display: flex; }
+  .fp-toolbar--open .fp-dirty { display: inline; }
+  .fp-toolbar--open .fp-saved-list { display: block; }
   .fp-toolbar-btns button { padding: 10px 16px; font-size: 14px; width: 100%; }
   .fp-template-btns {
     display: flex; flex-wrap: wrap; gap: 4px;
