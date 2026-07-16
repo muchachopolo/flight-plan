@@ -10,72 +10,111 @@ import './FlightPlanForm.css';
 
 type F = keyof FlightPlan;
 
-// [field, x, y, w, h] — all in PDF points (612x792 page)
-type FieldPos = [F, number, number, number, number];
+// Per-field render behavior. `kind` drives how the value is drawn in all
+// three modes (screen inputs, print mirror layer, PDF text).
+//   text   — free text; `date` swaps in a date picker + formatted output,
+//            `small` uses the 7pt variant.
+//   grid   — one boxed character per cell, `length` cells.
+//   select — dropdown of `options`, `default` when empty.
+//   split  — two dropdowns around a "/" pre-printed in the template at
+//            `slashOffset` points from the field's left edge.
+type Render =
+  | { kind: 'text'; date?: boolean; small?: boolean }
+  | { kind: 'grid'; length: number }
+  | { kind: 'select'; options: readonly string[]; default: string }
+  | {
+      kind: 'split';
+      sep: string;
+      slashOffset: number;
+      options: readonly string[];
+      default: string;
+      options2: readonly string[];
+      default2: string;
+    };
+
+// [field, x, y, w, h] — all in PDF points (612x792 page). The same numbers
+// double as CSS px over the on-screen background image (1pt maps to 1px).
+interface FieldDef {
+  field: F;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  render: Render;
+}
+
+// How far the second value sits from the pre-printed "/" separator, shared
+// by the print layer and the PDF so they can never drift apart.
+const SPLIT_LEFT_GAP = 3;  // first value's right edge, this far left of the slash
+const SPLIT_RIGHT_GAP = 4; // second value's left edge, this far right of the slash
+
+// Downward optical seat (points/px) so values rest toward the bottom cell line
+// instead of dead-center — the classic hand-filled look. Shared by print + PDF.
+const SEAT = 1.5;
+
+const EQUIP_COMM_OPTS = ['N','S','H','U','V','Y','G','D','B','A','F','O','L','I','K','W','X','Z'] as const;
+const EQUIP_SURV_OPTS = ['C','E','H','L','P','S','X'] as const;
 
 // Exact positions from PDF rectangle extraction
-const FIELDS: FieldPos[] = [
+const FIELDS: readonly FieldDef[] = [
   // ── HEADER ──
-  ['date',                  426,   45,  120,  13],
+  { field: 'date', x: 426, y: 45, w: 120, h: 13, render: { kind: 'text', date: true } },
 
   // ── ROW: aircraft id / flight rules / type ──
-  ['aircraftIdentification', 181,  201,  105,  14],
-  ['flightRules',            384,  200,   16,  15],
-  ['typeOfFlight',           504,  200,   16,  15],
+  { field: 'aircraftIdentification', x: 181, y: 201, w: 105, h: 14, render: { kind: 'grid', length: 7 } },
+  { field: 'flightRules', x: 384, y: 200, w: 16, h: 15, render: { kind: 'select', options: ['V','I','Y','Z'], default: 'V' } },
+  { field: 'typeOfFlight', x: 504, y: 200, w: 16, h: 15, render: { kind: 'select', options: ['G','S','N','M','X'], default: 'G' } },
 
   // ── ROW: number / type / wake / equipment ──
-  ['number',                  50,  231,   29,  13],
-  ['typeOfAircraft',         152,  231,   59,  13],
-  ['wakeTurbulenceCategory', 324,  230,   16,  15],
-  ['equipment',              440,  230,   78,  13],
+  { field: 'number', x: 50, y: 231, w: 29, h: 13, render: { kind: 'grid', length: 2 } },
+  { field: 'typeOfAircraft', x: 152, y: 231, w: 59, h: 13, render: { kind: 'grid', length: 4 } },
+  { field: 'wakeTurbulenceCategory', x: 324, y: 230, w: 16, h: 15, render: { kind: 'select', options: ['J','H','M','L'], default: 'L' } },
+  { field: 'equipment', x: 440, y: 230, w: 78, h: 13, render: { kind: 'split', sep: '/', slashOffset: 62, options: EQUIP_COMM_OPTS, default: '', options2: EQUIP_SURV_OPTS, default2: '' } },
 
   // ── ROW: departure / time ──
-  ['departureAerodrome',      92,  261,   59,  13],
-  ['time',                   225,  261,   65,  13],
+  { field: 'departureAerodrome', x: 92, y: 261, w: 59, h: 13, render: { kind: 'grid', length: 4 } },
+  { field: 'time', x: 225, y: 261, w: 65, h: 13, render: { kind: 'grid', length: 4 } },
 
   // ── ROW: speed / level / route ──
-  ['cruisingSpeed',           50,  291,   71,  13],
-  ['level',                  137,  291,   75,  13],
-  ['route',                  226,  291,  357,  13],
-  ['route2',                  37,  305,  545,  14],
-  ['route3',                  37,  320,  545,  14],
-  ['route4',                  37,  335,  545,  14],
-  ['route5',                  37,  350,  500,  14],
+  { field: 'cruisingSpeed', x: 50, y: 291, w: 71, h: 13, render: { kind: 'grid', length: 5 } },
+  { field: 'level', x: 137, y: 291, w: 75, h: 13, render: { kind: 'grid', length: 5 } },
+  { field: 'route', x: 226, y: 291, w: 357, h: 13, render: { kind: 'text' } },
+  { field: 'route2', x: 37, y: 305, w: 545, h: 14, render: { kind: 'text' } },
+  { field: 'route3', x: 37, y: 320, w: 545, h: 14, render: { kind: 'text' } },
+  { field: 'route4', x: 37, y: 335, w: 545, h: 14, render: { kind: 'text' } },
+  { field: 'route5', x: 37, y: 350, w: 500, h: 14, render: { kind: 'text' } },
 
   // ── ROW: destination / eet / altn / 2nd altn ──
-  ['destinationAerodrome',    92,  396,   59,  13],
-  ['eetHr',                  226,  396,   30,  13],
-  ['eetMin',                 257,  396,   29,  13],
-  ['altnAerodrome',          343,  396,   59,  13],
-  ['secondAltnAerodrome',    460,  396,   59,  13],
+  { field: 'destinationAerodrome', x: 92, y: 396, w: 59, h: 13, render: { kind: 'grid', length: 4 } },
+  { field: 'eetHr', x: 226, y: 396, w: 30, h: 13, render: { kind: 'grid', length: 2 } },
+  { field: 'eetMin', x: 257, y: 396, w: 29, h: 13, render: { kind: 'grid', length: 2 } },
+  { field: 'altnAerodrome', x: 343, y: 396, w: 59, h: 13, render: { kind: 'grid', length: 4 } },
+  { field: 'secondAltnAerodrome', x: 460, y: 396, w: 59, h: 13, render: { kind: 'grid', length: 4 } },
 
   // ── FIELD 18: other information ──
-  ['otherInformation',        52,  426,  531,  13],
-  ['otherInfo2',              37,  441,  545,  13],
-  ['otherInfo3',              37,  456,  545,  13],
-  ['otherInfo4',              37,  471,  500,  13],
-
-  // ── ROUTE CONTINUED (below field 18) ──
-  // These rows are part of route, handled by the textarea above
+  { field: 'otherInformation', x: 52, y: 426, w: 531, h: 13, render: { kind: 'text' } },
+  { field: 'otherInfo2', x: 37, y: 441, w: 545, h: 13, render: { kind: 'text' } },
+  { field: 'otherInfo3', x: 37, y: 456, w: 545, h: 13, render: { kind: 'text' } },
+  { field: 'otherInfo4', x: 37, y: 471, w: 500, h: 13, render: { kind: 'text' } },
 
   // ── FIELD 19: supplementary ──
-  ['enduranceHr',             79,  522,   31,  13],
-  ['enduranceMin',           111,  522,   29,  13],
-  ['personsOnBoard',         212,  524,   44,  13],
+  { field: 'enduranceHr', x: 79, y: 522, w: 31, h: 13, render: { kind: 'grid', length: 2 } },
+  { field: 'enduranceMin', x: 111, y: 522, w: 29, h: 13, render: { kind: 'grid', length: 2 } },
+  { field: 'personsOnBoard', x: 212, y: 524, w: 44, h: 13, render: { kind: 'grid', length: 3 } },
 
   // ── DINGHIES ──
-  ['numDinghies',            81,  613,   29,  13],
-  ['dinghiesCapacity',      123,  614,   43,  13],
-  ['tireCoverColor',        212,  613,  134,  13],
+  { field: 'numDinghies', x: 81, y: 613, w: 29, h: 13, render: { kind: 'grid', length: 2 } },
+  { field: 'dinghiesCapacity', x: 123, y: 614, w: 43, h: 13, render: { kind: 'grid', length: 3 } },
+  { field: 'tireCoverColor', x: 212, y: 613, w: 134, h: 13, render: { kind: 'text' } },
 
   // ── BOTTOM FIELDS ──
-  ['aircraftColor',           84,  642,  500,  13],
-  ['remarks',                 81,  672,  454,  13],
-  ['pilotInCommand',          84,  702,  262,  13],
+  { field: 'aircraftColor', x: 84, y: 642, w: 500, h: 13, render: { kind: 'text' } },
+  { field: 'remarks', x: 81, y: 672, w: 454, h: 13, render: { kind: 'text' } },
+  { field: 'pilotInCommand', x: 84, y: 702, w: 262, h: 13, render: { kind: 'text' } },
 
   // ── FOOTER ──
-  ['filedBy',                34,  731,  150,  12],
-  ['filedByLicNum',          34,  743,  100,  12],
+  { field: 'filedBy', x: 34, y: 731, w: 150, h: 12, render: { kind: 'text', small: true } },
+  { field: 'filedByLicNum', x: 34, y: 743, w: 100, h: 12, render: { kind: 'text', small: true } },
 ];
 
 // Checkbox definitions: [field, x, y, w, h]
@@ -115,34 +154,24 @@ function formatDateForPrint(iso: string): string {
   return `${parseInt(d,10)}/${MONTHS[parseInt(m,10)-1]}/${y}`;
 }
 
-const GRID_FIELDS: Partial<Record<F, number>> = {
-  aircraftIdentification: 7,
-  flightRules: 1,
-  typeOfFlight: 1,
-  number: 2,
-  typeOfAircraft: 4,
-  wakeTurbulenceCategory: 1,
-  departureAerodrome: 4,
-  time: 4,
-  destinationAerodrome: 4,
-  eetHr: 2,
-  eetMin: 2,
-  altnAerodrome: 4,
-  secondAltnAerodrome: 4,
-  enduranceHr: 2,
-  enduranceMin: 2,
-  personsOnBoard: 3,
-  cruisingSpeed: 5,
-  level: 5,
-  numDinghies: 2,
-  dinghiesCapacity: 3,
-};
+// One padded character per grid cell — shared by the print layer and PDF.
+function gridChars(value: string, length: number): string[] {
+  return value.padEnd(length).split('');
+}
+
+// The plain string a text/select field renders in print and PDF (dates get
+// reformatted; everything else is passed through).
+function displayValue(render: Render, raw: string): string {
+  if (render.kind === 'text' && render.date && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return formatDateForPrint(raw);
+  }
+  return raw;
+}
 
 function formatGridForPrint(value: string, length: number): React.ReactNode {
-  const padded = value.padEnd(length);
   return (
     <span className="fp-print-grid">
-      {padded.split('').map((ch, i) => (
+      {gridChars(value, length).map((ch, i) => (
         <span key={i} className="fp-print-grid-cell">{ch}</span>
       ))}
     </span>
@@ -266,25 +295,25 @@ export default function FlightPlanForm() {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
     pdf.addImage(img, 'PNG', 0, 0, 612, 792);
     pdf.setFontSize(11);
-    FIELDS.forEach(([key, x, y, w, h]) => {
-      let val = String(plan[key] ?? '');
-      if (!val) return;
-      if (key === 'date' && val.match(/^\d{4}-\d{2}-\d{2}$/)) val = formatDateForPrint(val);
-      const gLen = GRID_FIELDS[key as F] ?? 0;
-      const adjY = y - 2;
-      if (gLen) {
-        const padded = val.padEnd(gLen);
-        const cw = w / gLen;
-        padded.split('').forEach((ch, i) => {
-          pdf.text(ch, x + cw * i + cw / 2, adjY + h / 2 + 1, { align: 'center', baseline: 'middle' });
+    FIELDS.forEach(({ field, x, y, w, h, render }) => {
+      const raw = String(plan[field] ?? '');
+      if (!raw) return;
+      // box center plus the shared downward seat — matches the print layer
+      const midY = y + h / 2 + SEAT;
+      if (render.kind === 'grid') {
+        const cw = w / render.length;
+        gridChars(raw, render.length).forEach((ch, i) => {
+          pdf.text(ch, x + cw * i + cw / 2, midY, { align: 'center', baseline: 'middle' });
         });
-      } else if (key === 'equipment') {
-        const [comm = '', surv = ''] = val.split('/');
-        const slashX = x + 62;
-        if (comm) pdf.text(comm, slashX - 3, adjY + h / 2 + 1, { align: 'right', baseline: 'middle' });
-        if (surv) pdf.text(surv, slashX + 4, adjY + h / 2 + 1, { align: 'left', baseline: 'middle' });
+      } else if (render.kind === 'split') {
+        const [comm = '', surv = ''] = raw.split(render.sep);
+        const slashX = x + render.slashOffset;
+        if (comm) pdf.text(comm, slashX - SPLIT_LEFT_GAP, midY, { align: 'right', baseline: 'middle' });
+        if (surv) pdf.text(surv, slashX + SPLIT_RIGHT_GAP, midY, { align: 'left', baseline: 'middle' });
+      } else if (render.kind === 'select') {
+        pdf.text(raw, x + w / 2, midY, { align: 'center', baseline: 'middle' });
       } else {
-        pdf.text(val, x + 1, adjY + h / 2 + 1, { align: 'left', baseline: 'middle' });
+        pdf.text(displayValue(render, raw), x + 1, midY, { align: 'left', baseline: 'middle' });
       }
     });
     CHECKBOXES.filter(([k]) => plan[k]).forEach(([, x, y, cw, ch]) => {
@@ -413,8 +442,8 @@ export default function FlightPlanForm() {
             <img src={`${import.meta.env.BASE_URL}flight-plan-bg.png`} alt="" className="fp-bg" draggable={false} />
 
             {/* ── SCREEN: editable input fields ── */}
-            {FIELDS.map(([field, x, y, w, h]) => {
-              if (field === 'flightRules') {
+            {FIELDS.map(({ field, x, y, w, h, render }) => {
+              if (render.kind === 'select') {
                 return (
                   <div
                     key={field}
@@ -423,61 +452,16 @@ export default function FlightPlanForm() {
                   >
                     <select
                       className="fp-overlay-select"
-                      value={String(plan[field] ?? 'V')}
+                      value={String(plan[field] ?? render.default)}
                       onChange={e => handleChange(field, e.target.value)}
                     >
-                      <option value="V">V</option>
-                      <option value="I">I</option>
-                      <option value="Y">Y</option>
-                      <option value="Z">Z</option>
+                      {render.options.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                 );
               }
-              if (field === 'typeOfFlight') {
-                return (
-                  <div
-                    key={field}
-                    className="fp-select-wrap"
-                    style={{ left: x, top: y, width: w * 2, height: h }}
-                  >
-                    <select
-                      className="fp-overlay-select"
-                      value={String(plan[field] ?? 'G')}
-                      onChange={e => handleChange(field, e.target.value)}
-                    >
-                      <option value="G">G</option>
-                      <option value="S">S</option>
-                      <option value="N">N</option>
-                      <option value="M">M</option>
-                      <option value="X">X</option>
-                    </select>
-                  </div>
-                );
-              }
-              if (field === 'wakeTurbulenceCategory') {
-                return (
-                  <div
-                    key={field}
-                    className="fp-select-wrap"
-                    style={{ left: x, top: y, width: w * 2, height: h }}
-                  >
-                    <select
-                      className="fp-overlay-select"
-                      value={String(plan[field] ?? 'L')}
-                      onChange={e => handleChange(field, e.target.value)}
-                    >
-                      <option value="J">J</option>
-                      <option value="H">H</option>
-                      <option value="M">M</option>
-                      <option value="L">L</option>
-                    </select>
-                  </div>
-                );
-              }
-              if (field === 'equipment') {
-                const raw = String(plan[field] ?? '');
-                const [commNav = '', surv = ''] = raw.split('/');
+              if (render.kind === 'split') {
+                const [comm = render.default, surv = render.default2] = String(plan[field] ?? '').split(render.sep);
                 return (
                   <div
                     key={field}
@@ -486,52 +470,28 @@ export default function FlightPlanForm() {
                   >
                     <select
                       className="fp-overlay-select fp-equip-comm"
-                      value={commNav}
-                      onChange={e => handleChange(field, `${e.target.value}/${surv}`)}
+                      value={comm}
+                      onChange={e => handleChange(field, `${e.target.value}${render.sep}${surv}`)}
                     >
-                      <option value="N">N</option>
-                      <option value="S">S</option>
-                      <option value="H">H</option>
-                      <option value="U">U</option>
-                      <option value="V">V</option>
-                      <option value="Y">Y</option>
-                      <option value="G">G</option>
-                      <option value="D">D</option>
-                      <option value="B">B</option>
-                      <option value="A">A</option>
-                      <option value="F">F</option>
-                      <option value="O">O</option>
-                      <option value="L">L</option>
-                      <option value="I">I</option>
-                      <option value="K">K</option>
-                      <option value="W">W</option>
-                      <option value="X">X</option>
-                      <option value="Z">Z</option>
+                      {render.options.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                     <select
                       className="fp-overlay-select fp-equip-surv"
                       value={surv}
-                      onChange={e => handleChange(field, `${commNav}/${e.target.value}`)}
+                      onChange={e => handleChange(field, `${comm}${render.sep}${e.target.value}`)}
                     >
-                      <option value="C">C</option>
-                      <option value="E">E</option>
-                      <option value="H">H</option>
-                      <option value="L">L</option>
-                      <option value="P">P</option>
-                      <option value="S">S</option>
-                      <option value="X">X</option>
+                      {render.options2.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                 );
               }
-              const gridLen = GRID_FIELDS[field];
-              if (gridLen) {
+              if (render.kind === 'grid') {
                 return (
                   <CharGridInput
                     key={field}
                     value={String(plan[field] ?? '')}
                     onChange={val => handleChange(field, val)}
-                    length={gridLen}
+                    length={render.length}
                     style={{ left: x, top: y, width: w, height: h }}
                   />
                 );
@@ -539,9 +499,9 @@ export default function FlightPlanForm() {
               return (
                 <input
                   key={field}
-                  type={field === 'date' ? 'date' : 'text'}
+                  type={render.date ? 'date' : 'text'}
                   lang="en-GB"
-                  className={`fp-overlay-input${['filedBy', 'filedByLicNum'].includes(field) ? ' fp-input-sm' : ''}`}
+                  className={`fp-overlay-input${render.small ? ' fp-input-sm' : ''}`}
                   style={{ left: x, top: y, width: w, height: h }}
                   value={String(plan[field] ?? '')}
                   onChange={e => handleChange(field, e.target.value.toUpperCase())}
@@ -566,33 +526,30 @@ export default function FlightPlanForm() {
             ))}
 
             {/* ── PRINT ONLY: mirrored text layer (input values as divs) ── */}
-            {FIELDS.map(([field, x, y, w, h]) => {
+            {FIELDS.map(({ field, x, y, w, h, render }) => {
               const raw = String(plan[field] ?? '');
-              const gridLen = GRID_FIELDS[field];
-              let content: React.ReactNode = raw;
-              if (field === 'date') {
-                content = formatDateForPrint(raw);
-              } else if (gridLen) {
-                content = formatGridForPrint(raw, gridLen);
-              }
               if (!raw) return null;
+              let content: React.ReactNode;
+              if (render.kind === 'grid') {
+                content = formatGridForPrint(raw, render.length);
+              } else if (render.kind === 'split') {
+                const [comm, surv] = raw.split(render.sep);
+                content = (
+                  <span style={{ position: 'relative', width: '100%', height: '100%' }}>
+                    {comm && <span style={{ position: 'absolute', right: w - (render.slashOffset - SPLIT_LEFT_GAP), top: 0, bottom: 0, display: 'flex', alignItems: 'center' }}>{comm}</span>}
+                    {surv && <span style={{ position: 'absolute', left: render.slashOffset + SPLIT_RIGHT_GAP, top: 0, bottom: 0, display: 'flex', alignItems: 'center' }}>{surv}</span>}
+                  </span>
+                );
+              } else {
+                content = displayValue(render, raw);
+              }
               return (
                 <div
                   key={`print-${field}`}
                   className="fp-print-value"
-                  style={{ left: x, top: y, width: w, height: h }}
+                  style={{ left: x, top: y, width: w, height: h, transform: `translateY(${SEAT}px)`, ...(render.kind === 'select' ? { justifyContent: 'center' } : {}) }}
                 >
-                  {field === 'equipment'
-                    ? (() => {
-                        const [a, b] = raw.split('/');
-                        return (
-                          <span style={{ position: 'relative', width: '100%', height: '100%' }}>
-                            {a && <span style={{ position: 'absolute', right: w - 59, top: 0, bottom: 0, display: 'flex', alignItems: 'center' }}>{a}</span>}
-                            {b && <span style={{ position: 'absolute', left: 66, top: 0, bottom: 0, display: 'flex', alignItems: 'center' }}>{b}</span>}
-                          </span>
-                        );
-                      })()
-                    : content}
+                  {content}
                 </div>
               );
             })}
