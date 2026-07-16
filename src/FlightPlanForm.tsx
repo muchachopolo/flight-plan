@@ -322,7 +322,7 @@ export default function FlightPlanForm() {
       <div className="fp-page">
         <div className="fp-form-wrapper" style={{ transform: `scale(${zoom})` }}>
           <div className="fp-form" id="fp-form">
-            <img src="/flight-plan-bg.png" alt="" className="fp-bg" draggable={false} />
+            <img src={`${import.meta.env.BASE_URL}flight-plan-bg.png`} alt="" className="fp-bg" draggable={false} />
 
             {/* ── SCREEN: editable input fields ── */}
             {FIELDS.map(([field, x, y, w, h]) => {
