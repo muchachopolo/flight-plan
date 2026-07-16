@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FlightPlan } from './types';
 import { createEmptyFlightPlan } from './types';
-import { savePlan, loadAllPlans, deletePlan, loadPlan } from './storage';
+import { savePlan, loadAllPlans, deletePlan, loadPlan, exportAllData, importAllData } from './storage';
 import type { TemplateSection } from './templateTypes';
 import TemplateModal from './TemplateModal';
 import { useTheme } from './ThemeContext';
@@ -255,6 +255,39 @@ export default function FlightPlanForm() {
 
   const handlePrint = useCallback(() => { window.print(); }, []);
 
+  const handleExport = useCallback(() => {
+    const json = exportAllData();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `flight-plan-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleImport = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const result = importAllData(reader.result as string);
+          setSaved(loadAllPlans());
+          alert(`Imported ${result.plans} flight plans${result.templates ? ' and templates' : ''}.`);
+        } catch {
+          alert('Invalid backup file.');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, []);
+
   const handleTemplateSelect = useCallback((updates: Partial<FlightPlan>) => {
     setPlan(prev => ({ ...prev, ...updates }));
     setDirty(true);
@@ -282,6 +315,8 @@ export default function FlightPlanForm() {
           <button onClick={handleSave} disabled={!dirty}>Save</button>
           <button onClick={handleDuplicate}>Duplicate</button>
           <button onClick={handlePrint}>Print</button>
+          <button onClick={handleExport}>Export</button>
+          <button onClick={handleImport}>Import</button>
           <button onClick={() => setShowSavedList(!showSavedList)}>Saved ({saved.length})</button>
           <span className="fp-template-btns">
             <button onClick={() => setActiveModal('aircraft')}>Aircraft</button>
