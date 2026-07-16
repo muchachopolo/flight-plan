@@ -67,9 +67,9 @@ const FIELDS: FieldPos[] = [
   ['tireCoverColor',        212,  613,  134,  13],
 
   // ── BOTTOM FIELDS ──
-  ['aircraftColor',           81,  642,  500,  13],
+  ['aircraftColor',           84,  642,  500,  13],
   ['remarks',                 81,  672,  454,  13],
-  ['pilotInCommand',          81,  702,  262,  13],
+  ['pilotInCommand',          84,  702,  262,  13],
 
   // ── FOOTER ──
   ['filedBy',                34,  731,  150,  12],
