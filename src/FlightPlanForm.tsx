@@ -4,6 +4,7 @@ import { createEmptyFlightPlan } from './types';
 import { savePlan, loadAllPlans, deletePlan, loadPlan } from './storage';
 import type { TemplateSection } from './templateTypes';
 import TemplateModal from './TemplateModal';
+import { useTheme } from './ThemeContext';
 import './FlightPlanForm.css';
 
 type F = keyof FlightPlan;
@@ -193,6 +194,7 @@ export default function FlightPlanForm() {
   const [zoom, setZoom] = useState(1);
   const [activeModal, setActiveModal] = useState<TemplateSection | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { isDark, toggleTheme } = useTheme();
 
   useEffect(() => { setSaved(loadAllPlans()); }, []);
 
@@ -264,7 +266,16 @@ export default function FlightPlanForm() {
       <div className={`fp-toolbar screen-only${menuOpen ? ' fp-toolbar--open' : ''}`}>
         <div className="fp-toolbar-header">
           <h1>Flight Plan - Bolivia</h1>
-          <button className="fp-menu-toggle" onClick={() => setMenuOpen(o => !o)}>{menuOpen ? '✕' : '☰'}</button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              className="fp-menu-toggle"
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDark ? '☀️' : '🌙'}
+            </button>
+            <button className="fp-menu-toggle" onClick={() => setMenuOpen(o => !o)}>{menuOpen ? '✕' : '☰'}</button>
+          </div>
         </div>
         <div className="fp-toolbar-btns">
           <button onClick={handleNew}>+ New</button>
