@@ -58,7 +58,7 @@ const EQUIP_SURV_OPTS = ['C','E','H','L','P','S','X'] as const;
 // Exact positions from PDF rectangle extraction
 const FIELDS: readonly FieldDef[] = [
   // ── HEADER ──
-  { field: 'date', x: 426, y: 45, w: 120, h: 13, render: { kind: 'text', date: true } },
+  { field: 'date', x: 426, y: 42, w: 120, h: 13, render: { kind: 'text', date: true } },
 
   // ── ROW: aircraft id / flight rules / type ──
   { field: 'aircraftIdentification', x: 181, y: 201, w: 105, h: 14, render: { kind: 'grid', length: 7 } },
